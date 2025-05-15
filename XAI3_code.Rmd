@@ -143,3 +143,43 @@ The rug plots—black tick marks along both axes—represent the distribution of
 
 In conclusion, the Random Forest model used for predicting bike rentals has effectively captured a strong and intuitive relationship with temperature, showing that bike rentals increase as temperatures rise. In contrast, humidity has a much weaker or nearly neutral influence, and its interaction with temperature appears minimal. These insights can help inform decision-making related to demand forecasting and planning in bike-sharing systems under different weather conditions.
 
+
+
+
+
+# 3. PDP to explain the price of a house.
+
+```{r}
+house_data<- read.csv("kc_house_data.csv")
+df_house_sampled <- house_data %>% sample_n(500)
+set.seed(42)
+rf_model_3 <- randomForest(price~ bedrooms+bathrooms+sqft_living+sqft_lot+floors+yr_built, data = df_house_sampled, ntree = 100)
+
+
+
+p1 <- partial(rf_model_3, pred.var = "bedrooms", plot = TRUE, rug = TRUE)
+p2 <- partial(rf_model_3, pred.var = "bathrooms", plot = TRUE, rug = TRUE)
+p3 <- partial(rf_model_3, pred.var = "sqft_living", plot = TRUE, rug = TRUE)
+p4 <- partial(rf_model_3, pred.var = "sqft_lot", plot = TRUE, rug = TRUE)
+p5 <- partial(rf_model_3, pred.var = "floors", plot = TRUE, rug = TRUE)
+p6 <- partial(rf_model_3, pred.var = "yr_built", plot = TRUE, rug = TRUE)
+p1
+p2
+p3
+p4
+p5
+p6
+```
+
+The Partial Dependence Plot for “bedrooms” shows a somewhat counterintuitive trend. As the number of bedrooms increases from 1 to around 6, the predicted house price tends to slightly decrease or remain flat, with a sudden spike at 7 bedrooms. This could indicate that simply increasing the number of bedrooms does not significantly raise the value of a house unless it is part of a luxury or high-end property, which might explain the sharp increase observed for 7 bedrooms. In most cases, more bedrooms are correlated with larger homes, but this feature alone may not be a strong indicator of price without considering other factors like square footage or location.
+
+The plot for “bathrooms” reveals a clear positive relationship with house price. As the number of bathrooms increases from 1 to 6, the model predicts higher prices in a relatively smooth upward trend, especially after 2.5 bathrooms. This suggests that buyers perceive additional bathrooms as a valuable feature, perhaps due to the convenience they offer, especially in larger or multi-family households. Homes with more than four bathrooms appear to be associated with significantly higher price predictions, indicating a possible shift toward luxury homes in that range.
+
+The PDP for “sqft_living” (living area in square feet) shows a strong positive and mostly linear relationship with house price. As the living space increases from approximately 500 to 4000 square feet, the predicted price rises sharply. Beyond 4000 square feet, the curve begins to flatten, suggesting diminishing returns in value for very large homes. This is consistent with expectations: larger homes are typically more expensive, but at a certain point, additional space adds less relative value.
+
+The plot for “sqft_lot” (lot size) presents a less pronounced trend. There is a modest increase in predicted house prices with larger lot sizes, but the relationship is more irregular and contains several plateaus. This suggests that while larger lots can increase home value, the effect is less direct or consistent than that of living space. Factors such as zoning, location, and usability of the land likely play a role in moderating this impact.
+
+The PDP for “floors” displays a noticeable increase in predicted house price when the number of floors goes from 1 to 2.5. Houses with more floors may suggest more living space or a more modern design, which buyers might value. However, beyond 2.5 floors, the effect levels off or slightly decreases, indicating that additional stories beyond a certain point may not contribute significantly to price increases, or might even be seen as less desirable in some cases.
+
+Lastly, the plot for “yr_built” (year built) shows a decreasing trend in predicted price as the construction year becomes more recent, especially from 1900 to the 2000s. This result might seem surprising at first, as newer homes are generally expected to be more valuable. However, this trend may reflect location biases in the dataset (e.g., older homes in premium, central neighborhoods), or that older homes with historical or architectural value may command higher prices than newer constructions in less desirable areas.
+
