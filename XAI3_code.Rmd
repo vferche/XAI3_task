@@ -1,0 +1,77 @@
+---
+title: "XAI3"
+author: "Victor Ferrando, Marcos Valero, Marcos Ranchal"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+library(dplyr)
+library(randomForest)
+library(pdp)
+library(ggplot2)
+datos<- read.csv("day.csv")
+# 1. One-hot encoding para season (3 columnas, eliminamos una para evitar multicolinealidad)
+datos <- datos %>%
+  mutate(
+    season_2 = ifelse(season == 2, 1, 0),
+    season_3 = ifelse(season == 3, 1, 0),
+    season_4 = ifelse(season == 4, 1, 0)
+  )
+
+# 2. Variables MISTY y RAIN
+datos <- datos %>%
+  mutate(
+    MISTY = ifelse(weathersit == 2, 1, 0),
+    RAIN = ifelse(weathersit %in% c(3, 4), 1, 0)
+  )
+
+# 3. Desnormalizar temp, hum y windspeed
+# Según documentación, los valores fueron normalizados dividiendo por:
+# temp (C): /41, hum: /100, windspeed: /67
+datos <- datos %>%
+  mutate(
+    temp_real = temp * 41,
+    hum_real = hum * 100,
+    windspeed_real = windspeed * 67
+  )
+
+# 4. Crear days_since_2011
+datos$dteday <- as.Date(datos$dteday)
+datos$days_since_2011 <- as.numeric(difftime(datos$dteday, as.Date("2011-01-01"), units = "days"))
+
+```
+
+# 1. One dimensional Partial Dependence Plot
+
+```{r rf}
+# Select relevant features and target
+features <- c("days_since_2011", "temp_real", "hum_real", "windspeed_real")
+df_model <- datos[, c(features, "cnt")]
+
+# Fit Random Forest
+set.seed(42)
+rf_model <- randomForest(cnt ~ ., data = df_model, ntree = 100)#df_model
+library(gridExtra)
+
+p1 <- partial(rf_model, pred.var = "days_since_2011", plot = TRUE, rug = TRUE, main = "Effect of Days Since 2011")
+p2 <- partial(rf_model, pred.var = "temp_real", plot = TRUE, rug = TRUE, main = "Effect of Temperature")
+p3 <- partial(rf_model, pred.var = "hum_real", plot = TRUE, rug = TRUE, main = "Effect of Humidity")
+p4 <- partial(rf_model, pred.var = "windspeed_real", plot = TRUE, rug = TRUE, main = "Effect of Wind Speed")
+
+p1
+p2
+p3
+p4
+```
+
+The Partial Dependence Plot for "days_since_2011" reveals a generally increasing trend in the predicted number of bike rentals over time. This suggests that, as the days progress from the beginning of 2011, the expected count of rentals grows, likely reflecting factors such as increased adoption of the bike-sharing system, expansion of the service, or seasonal usage patterns. While the trend is not strictly linear—there are periods of slower growth and some plateaus—the overall direction indicates a positive association between time and rental frequency.
+
+The plot for "temp_real" (temperature) shows a clear nonlinear relationship with bike rentals. As temperature increases from low values up to around 25–30°C, the predicted number of rentals rises significantly, indicating that users are more likely to rent bikes in mild to warm weather. However, beyond this optimal temperature range, the rental count begins to decline slightly, suggesting that very hot conditions may deter users due to discomfort or health risks. This aligns well with common behavioral patterns related to outdoor physical activity.
+
+The PDP for "hum_real" (humidity) displays a strong negative effect on bike rentals. While rentals are relatively stable at low to moderate humidity levels, they begin to drop off notably when humidity exceeds 60%, and the decline becomes steeper as humidity continues to rise. This implies that high humidity—often associated with discomfort, sweatiness, or potential rain—reduces the attractiveness of cycling, thereby decreasing the number of rentals predicted by the model.
+
+Finally, the plot for "windspeed_real" (wind speed) also reveals a negative correlation with the number of bike rentals. When wind speed is low (under 10 km/h), the expected number of rentals is high, but as wind speed increases, the predicted rentals steadily decrease. This is likely due to the physical difficulty and reduced safety associated with cycling in windy conditions. At higher wind speeds (above 20 km/h), the number of predicted rentals is significantly lower, confirming that wind acts as a strong deterrent to bike usage
